@@ -3,11 +3,12 @@ import uvicorn
 import joblib
 from pydantic import BaseModel
 
-# модель жана scaler жүктөө
-model = joblib.load("model.pkl")
-scaler = joblib.load("scaler.pkl")
 
-app = FastAPI()
+model = joblib.load("model (7).pkl")
+scaler = joblib.load("scaler (8).pkl")
+
+
+titanic_app = FastAPI()
 
 class PersonSchema(BaseModel):
     p_class: int
@@ -17,48 +18,28 @@ class PersonSchema(BaseModel):
     parch: int
     fare: float
     embarked: str
-    # Эгер башка categorical болсо, аны дагы кошсо болот
 
-@app.post("/predict")
+
+@titanic_app.post("/predict")
 async def predict(person: PersonSchema):
     person_dict = person.dict()
 
-    # gender encode
-    gender_female = 1 if person_dict['gender']=='female' else 0
+    gender = person_dict.pop("gender")
+    gender1_0 = [
+        1 if gender == "female" else 0,
+    ]
 
-    # embarked encode (dummy)
-    embarked_C = 1 if person_dict['embarked']=='C' else 0
-    embarked_Q = 1 if person_dict['embarked']=='Q' else 0
-    embarked_S = 1 if person_dict['embarked']=='S' else 0
+    embarked = person_dict.pop('embarked')
+    embarked1_0 = [
+        1 if embarked == 'Q' else 0,
+        1 if embarked == 'S' else 0,
+    ]
 
-    # Бул жерде тренингдеги башка categorical features encode кылынуусу керек
-    # Эгер trainда 22 feature болсо, missing features үчүн 0 кошобуз
-    # Мисалы:
-    extra_features = [0]*(22 - 5 - 1 - 3)
-    # 5: p_class, age, sib_sp, parch, fare
-    # 1: gender_female
-    # 3: embarked_C, Q, S
-    # Калганы missing (trainда encode кылган categorical)
-
-    # Person data order тренингдеги order менен дал келиши керек
-    person_data = [
-        person_dict['p_class'],
-        person_dict['age'],
-        person_dict['sib_sp'],
-        person_dict['parch'],
-        person_dict['fare'],
-        gender_female,
-        embarked_C,
-        embarked_Q,
-        embarked_S,
-    ] + extra_features
-
-    # transform жана predict
-    scaler_data = scaler.transform([person_data])
-    pred = model.predict(scaler_data)[0]
-
-    return {"result": "alive" if int(pred)==1 else "not alive"}
+    person_df = list(person_dict.values()) + gender1_0 + embarked1_0
+    scaler_df = scaler.transform([person_df])
+    pred = model.predict(scaler_df)[0]
+    return {"result": "alive" if  pred == 1 else "not alive"}
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8002)
+    uvicorn.run(titanic_app, host="127.0.0.1", port=8001)

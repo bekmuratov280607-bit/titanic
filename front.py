@@ -31,7 +31,6 @@ if st.button('Predict'):
         if answer.status_code == 200:
             result = answer.json()
             st.success(f'Result: {result.get('result')}')
-            #st.json()
         else:
             st.error(f'Error: {answer.status_code}')
     except requests.exceptions.RequestException:
